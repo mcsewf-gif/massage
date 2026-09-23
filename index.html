@@ -139,7 +139,7 @@
   <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
       <h3>消费与充值明细</h3>
-      <button class="btn btn-outline" style="width: auto; padding: 5px 10px; font-size: 12px; margin-top: 0;" onclick="exportToExcel()">导出 Excel</button>
+      <button class="btn btn-outline" style="width: auto; padding: 5px 10px; font-size: 12px; margin-top: 0;" onclick="exportToExcel()">导出表格</button>
     </div>
     <div id="historyList"></div>
   </div>
@@ -166,7 +166,7 @@
       document.getElementById('recDate').value = new Date().toISOString().split('T')[0];
     };
 
-    // 数据持久化（升级存储键名，清空乱码历史）
+    // 数据持久化
     function saveData() {
       localStorage.setItem('massage_app_v2', JSON.stringify(state));
       updateDashboard();
@@ -308,7 +308,7 @@
       }
     }
 
-    // 渲染历史明细（全面摒弃旧字符串拼接，解决乱码）
+    // 渲染历史明细
     function renderHistory() {
       const container = document.getElementById('historyList');
       if (state.logs.length === 0) {
@@ -352,29 +352,61 @@
       }).join('');
     }
 
-    // 导出 Excel
+    // 导出真正的 Excel (.xls) 格式，手机端点击可直接选择 Google Sheets 打开
     function exportToExcel() {
       if (state.logs.length === 0) {
         alert("没有可导出的记录！");
         return;
       }
 
-      let csvContent = "\uFEFF";
-      csvContent += "日期,星期,类型/使用者,变动分钟数,地点,按摩师,备注\n";
+      let tableHTML = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head><meta charset="UTF-8"></head>
+        <body>
+          <table border="1">
+            <thead>
+              <tr style="background-color: #f2f2f2;">
+                <th>日期</th>
+                <th>星期</th>
+                <th>使用者/类型</th>
+                <th>变动分钟数</th>
+                <th>地点</th>
+                <th>按摩师</th>
+                <th>备注</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
 
       state.logs.forEach(log => {
         const typeStr = log.type === 'topup' ? '充值' : log.user;
         const durationStr = log.type === 'topup' ? `+${log.duration}` : `-${log.duration}`;
-        const noteClean = (log.note || '').replace(/,/g, ' ');
         
-        csvContent += `"${log.date}","${log.dayOfWeek}","${typeStr}","${durationStr}","${log.location}","${log.masseuse}","${noteClean}"\n`;
+        tableHTML += `
+          <tr>
+            <td>${log.date}</td>
+            <td>${log.dayOfWeek}</td>
+            <td>${typeStr}</td>
+            <td>${durationStr}</td>
+            <td>${log.location}</td>
+            <td>${log.masseuse}</td>
+            <td>${log.note || ''}</td>
+          </tr>
+        `;
       });
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      tableHTML += `
+            </tbody>
+          </table>
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob([tableHTML], { type: 'application/vnd.ms-excel;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `按摩卡消费记录_${new Date().toISOString().split('T')[0]}.csv`);
+      link.setAttribute("download", `按摩卡消费记录_${new Date().toISOString().split('T')[0]}.xls`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
