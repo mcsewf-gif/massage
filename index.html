@@ -51,11 +51,15 @@
     .btn-add-opt { width: 35px; margin-top: 0; margin-left: 5px; flex-shrink: 0; }
 
     /* 记录列表 */
-    .history-item { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; }
+    .history-item { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
     .history-item:last-child { border-bottom: none; }
+    .history-left { flex: 1; }
     .history-main { font-size: 15px; font-weight: bold; }
-    .history-sub { font-size: 12px; color: #777; margin-top: 3px; line-height: 1.4; }
-    .history-amount { color: #e74c3c; font-weight: bold; font-size: 16px; }
+    .history-sub { font-size: 12px; color: #666; margin-top: 4px; line-height: 1.5; }
+    
+    /* 右侧变动时长调整：字体变小并强制单行显示 */
+    .history-right { text-align: right; flex-shrink: 0; white-space: nowrap; }
+    .history-amount { font-weight: bold; font-size: 14px; }
 
     /* 折叠面板 */
     details { margin-bottom: 15px; }
@@ -268,7 +272,7 @@
       const log = {
         id: Date.now(),
         type: 'topup',
-        user: '系统/充值',
+        user: '充值',
         duration: amount,
         date: dateStr,
         dayOfWeek: WEEK_DAYS[today.getDay()],
@@ -315,21 +319,21 @@
         const isTopup = log.type === 'topup';
         return `
           <div class="history-item">
-            <div>
+            <div class="history-left">
               <div class="history-main">
-                👤 ${isTopup ? '充值' : log.user} 
+                ${isTopup ? '充值' : log.user} 
                 <span style="font-size:12px; font-weight:normal; color:#666;">(${log.date} ${log.dayOfWeek})</span>
               </div>
               <div class="history-sub">
-                ${isTopup ? '' : `📍 ${log.location} \vert{} 💆 ${log.masseuse}<br>`}
-                ${log.note ? `📝 ${log.note}` : ''}
+                ${isTopup ? '' : `地点：${log.location} \vert{} 按摩师：${log.masseuse}<br>`}
+                ${log.note ? `备注：${log.note}` : ''}
               </div>
             </div>
-            <div style="text-align: right;">
+            <div class="history-right">
               <div class="history-amount" style="color: ${isTopup ? '#2ecc71' : '#e74c3c'}">
                 ${isTopup ? '+' : '-'}${log.duration} 分钟
               </div>
-              <button onclick="deleteLog(${log.id})" style="background:none; border:none; color:#ccc; font-size:12px; margin-top:4px; cursor:pointer;">删除</button>
+              <button onclick="deleteLog(${log.id})" style="background:none; border:none; color:#bbb; font-size:12px; margin-top:4px; cursor:pointer;">删除</button>
             </div>
           </div>
         `;
