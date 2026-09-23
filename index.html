@@ -54,8 +54,9 @@
     .history-item { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
     .history-item:last-child { border-bottom: none; }
     .history-left { flex: 1; }
-    .history-main { font-size: 15px; font-weight: bold; }
-    .history-sub { font-size: 12px; color: #666; margin-top: 4px; line-height: 1.5; }
+    .history-main { font-size: 15px; font-weight: bold; margin-bottom: 4px; }
+    .history-info-row { font-size: 13px; color: #555; display: flex; flex-wrap: wrap; gap: 12px; margin-top: 2px; }
+    .history-note { font-size: 12px; color: #777; margin-top: 4px; }
     
     /* 右侧变动时长单行显示 */
     .history-right { text-align: right; flex-shrink: 0; white-space: nowrap; }
@@ -157,7 +158,6 @@
     // 页面加载初始化
     window.onload = function() {
       loadData();
-      cleanCorruptedData(); // 自动修复/清除已保存数据里的乱码字符
       renderOptions();
       updateDashboard();
       renderHistory();
@@ -166,41 +166,15 @@
       document.getElementById('recDate').value = new Date().toISOString().split('T')[0];
     };
 
-    // 自动清洗历史乱码字符的修复函数
-    function cleanCorruptedData() {
-      let isCleaned = false;
-      if (state.locations) {
-        state.locations = state.locations.map(loc => loc.replace(/\\?ert\{\}/g, '').replace(/\\?ert/g, '').trim());
-      }
-      if (state.masseuses) {
-        state.masseuses = state.masseuses.map(mas => mas.replace(/\\?ert\{\}/g, '').replace(/\\?ert/g, '').trim());
-      }
-      if (state.logs && state.logs.length > 0) {
-        state.logs.forEach(log => {
-          if (log.location) {
-            const cleanLoc = log.location.replace(/\\?ert\{\}/g, '').replace(/\\?ert/g, '').trim();
-            if (cleanLoc !== log.location) { log.location = cleanLoc; isCleaned = true; }
-          }
-          if (log.masseuse) {
-            const cleanMas = log.masseuse.replace(/\\?ert\{\}/g, '').replace(/\\?ert/g, '').trim();
-            if (cleanMas !== log.masseuse) { log.masseuse = cleanMas; isCleaned = true; }
-          }
-        });
-      }
-      if (isCleaned) {
-        saveData();
-      }
-    }
-
-    // 数据持久化
+    // 数据持久化（升级存储键名，清空乱码历史）
     function saveData() {
-      localStorage.setItem('massage_app_data', JSON.stringify(state));
+      localStorage.setItem('massage_app_v2', JSON.stringify(state));
       updateDashboard();
       renderHistory();
     }
 
     function loadData() {
-      const saved = localStorage.getItem('massage_app_data');
+      const saved = localStorage.getItem('massage_app_v2');
       if (saved) {
         state = JSON.parse(saved);
       }
@@ -228,7 +202,7 @@
     function addOption(type) {
       const name = prompt(type === 'location' ? "请输入新地点名称:" : "请输入新按摩师名字:");
       if (name && name.trim()) {
-        const cleanName = name.trim().replace(/\\?ert\{\}/g, '').replace(/\\?ert/g, '');
+        const cleanName = name.trim();
         if (type === 'location' && !state.locations.includes(cleanName)) {
           state.locations.push(cleanName);
         } else if (type === 'masseuse' && !state.masseuses.includes(cleanName)) {
@@ -334,7 +308,7 @@
       }
     }
 
-    // 渲染历史明细
+    // 渲染历史明细（全面摒弃旧字符串拼接，解决乱码）
     function renderHistory() {
       const container = document.getElementById('historyList');
       if (state.logs.length === 0) {
@@ -344,6 +318,20 @@
 
       container.innerHTML = state.logs.map(log => {
         const isTopup = log.type === 'topup';
+        
+        let subContent = '';
+        if (isTopup) {
+          subContent = `<div class="history-note">📝 ${log.note}</div>`;
+        } else {
+          subContent = `
+            <div class="history-info-row">
+              <span>📍 ${log.location}</span>
+              <span>💆 ${log.masseuse}</span>
+            </div>
+            ${log.note ? `<div class="history-note">📝 ${log.note}</div>` : ''}
+          `;
+        }
+
         return `
           <div class="history-item">
             <div class="history-left">
@@ -351,10 +339,7 @@
                 👤 ${isTopup ? '充值' : log.user} 
                 <span style="font-size:12px; font-weight:normal; color:#666;">(${log.date} ${log.dayOfWeek})</span>
               </div>
-              <div class="history-sub">
-                ${isTopup ? '' : `📍 ${log.location} &nbsp;\vert{}&nbsp; 💆 ${log.masseuse}<br>`}
-                ${log.note ? `📝 ${log.note}` : ''}
-              </div>
+              ${subContent}
             </div>
             <div class="history-right">
               <div class="history-amount" style="color: ${isTopup ? '#2ecc71' : '#e74c3c'}">
@@ -397,4 +382,3 @@
   </script>
 </body>
 </html>
-
