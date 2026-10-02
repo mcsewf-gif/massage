@@ -166,34 +166,20 @@
 
   <script>
     // ==========================================
-    // 1. Firebase 初始化配置 (替换为你自己的 Firebase 信息)
+    // 1. Firebase 初始化配置（注意保留 <script> 标签包裹）
+    // 请将下方YOUR_...替换为您Firebase里的实际参数
     // ==========================================
-          <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
+    const firebaseConfig = {
+      apiKey: "AIzaSyAeZqiAzYMLDPonyxvoN2t8F--siPKg7-A",
+      authDomain: "massage-11aab.firebaseapp.com",
+      databaseURL: "https://massage-11aab-default-rtdb.firebaseio.com",
+      projectId: "massage-11aab",
+      storageBucket: "massage-11aab.firebasestorage.app",
+      messagingSenderId: "641443672300",
+      appId: "1:641443672300:web:fcdddc2da9a8537e76f5c9"
+    };
 
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyAeZqiAzYMLDPonyxvoN2t8F--siPKg7-A",
-    authDomain: "massage-11aab.firebaseapp.com",
-    projectId: "massage-11aab",
-    storageBucket: "massage-11aab.firebasestorage.app",
-    messagingSenderId: "641443672300",
-    appId: "1:641443672300:web:fcdddc2da9a8537e76f5c9",
-    measurementId: "G-QZWV6C934M"
-  
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-</script>
-  };
-
-    // 设置你的管理员解锁密钥（用来区分管理员还是普通访客）
+    // 设置管理员密码
     const ADMIN_SECRET_KEY = "8888"; 
 
     // 初始化 Firebase
@@ -201,7 +187,7 @@
     const db = firebase.database();
 
     // ==========================================
-    // 2. 状态变量与权限控制
+    // 2. 业务逻辑与权限控制
     // ==========================================
     let state = {
       balance: 0,
@@ -210,17 +196,16 @@
       logs: []
     };
 
-    let isAdmin = false; // 默认：Read-Only 模式
+    let isAdmin = false; // 默认只读
     const WEEK_DAYS = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
 
     window.onload = function() {
-      // 检查本地是否已保存管理员权限状态
       if (localStorage.getItem('massage_app_admin') === 'true') {
         isAdmin = true;
       }
       updatePermissionUI();
 
-      // 实时监听 Firebase 数据库更新
+      // 实时监听数据库
       db.ref('massage_card_data').on('value', (snapshot) => {
         const val = snapshot.val();
         if (val) {
@@ -234,11 +219,9 @@
         renderHistory();
       });
 
-      // 设置默认日期为今天
       document.getElementById('recDate').value = new Date().toISOString().split('T')[0];
     };
 
-    // 切换管理员/只读模式
     function toggleAdminMode() {
       if (isAdmin) {
         if (confirm("是否退出管理员模式，切换为只读状态？")) {
@@ -259,7 +242,6 @@
       }
     }
 
-    // 根据权限更新 UI 界面显示/隐藏
     function updatePermissionUI() {
       const badge = document.getElementById('roleBadge');
       const adminElements = document.querySelectorAll('.admin-only');
@@ -273,15 +255,13 @@
         badge.style.background = "rgba(255,255,255,0.2)";
         adminElements.forEach(el => el.classList.add('read-only-hide'));
       }
-      renderHistory(); // 重新渲染列表（控制删除按钮显示）
+      renderHistory();
     }
 
-    // 数据保存到云端 Firebase
     function saveData() {
       db.ref('massage_card_data').set(state);
     }
 
-    // 更新 Dashboard 显示
     function updateDashboard() {
       const total = state.balance || 0;
       document.getElementById('dispTotalMinutes').innerText = `${total} 分钟`;
@@ -290,7 +270,6 @@
       document.getElementById('dispHours').innerText = `约 ${hrs} 小时 ${mins} 分钟`;
     }
 
-    // 渲染下拉框选项
     function renderOptions() {
       const locSelect = document.getElementById('recLocation');
       locSelect.innerHTML = (state.locations || []).map(l => `<option value="${l}">${l}</option>`).join('');
@@ -299,7 +278,6 @@
       masSelect.innerHTML = (state.masseuses || []).map(m => `<option value="${m}">${m}</option>`).join('');
     }
 
-    // 动态添加地点或按摩师（仅管理员）
     function addOption(type) {
       if (!isAdmin) return;
       const name = prompt(type === 'location' ? "请输入新地点名称:" : "请输入新按摩师名字:");
@@ -314,7 +292,6 @@
       }
     }
 
-    // 打开消费表单（仅管理员）
     function openRecordForm(user) {
       if (!isAdmin) return;
       document.getElementById('recUser').value = user;
@@ -329,7 +306,6 @@
       document.getElementById('recordCard').style.display = 'none';
     }
 
-    // 保存消费记录（仅管理员）
     function saveRecord() {
       if (!isAdmin) return;
       const duration = parseInt(document.getElementById('recDuration').value) || 0;
@@ -361,7 +337,6 @@
       closeRecordForm();
     }
 
-    // 充值卡时长（仅管理员）
     function addTopup() {
       if (!isAdmin) return;
       const amount = parseInt(document.getElementById('topupAmount').value) || 0;
@@ -397,7 +372,6 @@
       alert(`成功增加 ${amount} 分钟！`);
     }
 
-    // 删除单条记录（仅管理员）
     function deleteLog(id) {
       if (!isAdmin) return;
       if (!confirm("确定要删除这条记录吗？相关时长将被自动退回/扣除。")) return;
@@ -415,7 +389,6 @@
       }
     }
 
-    // 渲染历史明细
     function renderHistory() {
       const container = document.getElementById('historyList');
       if (!state.logs || state.logs.length === 0) {
@@ -439,7 +412,6 @@
           `;
         }
 
-        // 仅管理员可看到“删除”按钮
         const deleteBtn = isAdmin 
           ? `<button onclick="deleteLog(${log.id})" style="background:none; border:none; color:#bbb; font-size:12px; margin-top:4px; cursor:pointer;">删除</button>` 
           : '';
@@ -464,7 +436,6 @@
       }).join('');
     }
 
-    // 导出真正的 Excel (.xls) 格式（所有人都可导出查看）
     function exportToExcel() {
       if (!state.logs || state.logs.length === 0) {
         alert("没有可导出的记录！");
