@@ -200,14 +200,16 @@
     // ==========================================
     // 1. Firebase 初始化配置（请填入您自己的 Firebase 参数）
     // ==========================================
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
+    const firebaseConfig = {   
+  apiKey: "AIzaSyAeZqiAzYMLDPonyxvoN2t8F--siPKg7-A",
+  authDomain: "massage-11aab.firebaseapp.com",
+  databaseURL: "https://massage-11aab-default-rtdb.firebaseio.com",
+  projectId: "massage-11aab",
+  storageBucket: "massage-11aab.firebasestorage.app",
+  messagingSenderId: "641443672300",
+  appId: "1:641443672300:web:31345525cd78654776f5c9",
+  measurementId: "G-JLCEESN2W0"
+};
     };
 
     // 设置管理员密码
@@ -281,11 +283,11 @@
       const adminElements = document.querySelectorAll('.admin-only');
 
       if (isAdmin) {
-        badge.innerText = "✏️ 管理员模式";
+        badge.innerText = "管理员模式";
         badge.style.background = "rgba(46, 204, 113, 0.4)";
         adminElements.forEach(el => el.classList.remove('read-only-hide'));
       } else {
-        badge.innerText = "👁️ 只读模式";
+        badge.innerText = "只读模式";
         badge.style.background = "rgba(255,255,255,0.2)";
         adminElements.forEach(el => el.classList.add('read-only-hide'));
       }
@@ -534,4 +536,3 @@
   </script>
 </body>
 </html>
-
