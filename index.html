@@ -117,6 +117,7 @@
 
     .form-group {
       margin-bottom: 16px;
+      width: 100%;
     }
 
     .form-group label {
@@ -129,6 +130,8 @@
 
     .form-control {
       width: 100%;
+      max-width: 100%;
+      min-width: 0;
       padding: 12px 16px;
       border: 1px solid #e0e0e0;
       border-radius: 10px;
@@ -136,6 +139,14 @@
       outline: none;
       transition: border-color 0.2s;
       background-color: #fff;
+      -webkit-appearance: none; /* 清除iOS默认样式，防止宽度溢出 */
+      appearance: none;
+    }
+
+    /* 日期选择框居中且占满行 */
+    input[type="date"].form-control {
+      text-align: center;
+      display: block;
     }
 
     .form-control:focus {
@@ -264,7 +275,7 @@
         <input type="number" id="minutes" class="form-control" placeholder="例如：300" required>
       </div>
 
-      <!-- 2. 新增：充值日期 -->
+      <!-- 2. 充值日期 -->
       <div class="form-group">
         <label for="rechargeDate">充值日期</label>
         <input type="date" id="rechargeDate" class="form-control" required>
@@ -303,7 +314,7 @@
   </div>
 
   <script>
-    // 页面加载时，设置充值日期的默认值为今天
+    // 页面加载时，自动填充当天日期 (YYYY-MM-DD)
     window.onload = function() {
       const today = new Date().toISOString().split('T')[0];
       document.getElementById('rechargeDate').value = today;
@@ -324,9 +335,11 @@
 
       alert(`充值成功！\n分钟数：${minutes}\n日期：${date}\n备注：${remark || '无'}`);
       
-      // 清空表单
+      // 清空表单，并重新设置默认日期
       document.getElementById('minutes').value = '';
       document.getElementById('remark').value = '';
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('rechargeDate').value = today;
     }
 
     function exportData() {
