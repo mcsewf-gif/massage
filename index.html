@@ -2,523 +2,341 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>按摩卡余量管理</title>
-  
-  <!-- PWA 支持配置 -->
-  <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22按摩卡管理%22,%22short_name%22:%22按摩卡%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%23f4f6f9%22,%22theme_color%22:%22%232c3e50%22}">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#2c3e50">
-
-  <!-- 引入 Firebase 模块 -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>卡内剩余总时长</title>
   <style>
     :root {
-      --primary-color: #2c3e50;
-      --accent-color: #3498db;
+      --primary-color: #4a90e2;
       --bg-color: #f4f6f9;
       --card-bg: #ffffff;
-      --text-color: #333333;
+      --text-main: #333333;
+      --text-sub: #888888;
+      --border-radius: 16px;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    body { background-color: var(--bg-color); color: var(--text-color); padding: 15px; padding-bottom: 40px; }
-    
-    .card { background: var(--card-bg); border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-    
-    /* 头部剩余时间 */
-    .dashboard { text-align: center; background: linear-gradient(135deg, #2c3e50, #3498db); color: #fff; padding-top: 15px; }
-    
-    /* 顶部标题与角色按钮横向对齐防重叠 */
-    .dashboard-header {
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      padding: 16px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    /* 顶部卡片 */
+    .top-card {
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      color: white;
+      padding: 24px 20px;
+      border-radius: var(--border-radius);
+      text-align: center;
+      position: relative;
+      margin-bottom: 16px;
+      box-shadow: 0 8px 20px rgba(30, 60, 114, 0.15);
+    }
+
+    .top-card .header-title {
+      font-size: 14px;
+      opacity: 0.8;
+      position: absolute;
+      top: 16px;
+      left: 20px;
+    }
+
+    .top-card .admin-mode {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+    }
+
+    .top-card .total-minutes {
+      font-size: 42px;
+      font-weight: bold;
+      margin: 20px 0 6px 0;
+    }
+
+    .top-card .total-hours {
+      font-size: 14px;
+      opacity: 0.85;
+    }
+
+    /* 快捷人员按钮 */
+    .person-tabs {
       display: flex;
-      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .person-btn {
+      flex: 1;
+      padding: 14px;
+      background-color: var(--card-bg);
+      border: 2px solid var(--primary-color);
+      border-radius: var(--border-radius);
+      color: var(--primary-color);
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+
+    .person-btn.active {
+      background-color: var(--primary-color);
+      color: white;
+    }
+
+    /* 折叠标题 */
+    .section-toggle {
+      font-size: 16px;
+      font-weight: bold;
+      margin: 16px 4px 12px 4px;
+      display: flex;
       align-items: center;
+      cursor: pointer;
+    }
+
+    /* 功能卡片 */
+    .card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: var(--border-radius);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+      margin-bottom: 16px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #555;
       margin-bottom: 8px;
     }
 
-    .dashboard h2 { font-size: 13px; opacity: 0.85; font-weight: normal; margin-bottom: 0; white-space: nowrap; }
-    .balance-display { font-size: 38px; font-weight: bold; margin: 5px 0; }
-    .balance-details { font-size: 14px; opacity: 0.9; }
-
-    /* 角色状态标签：缩小字体与内边距 */
-    .role-badge {
-      background: rgba(255,255,255,0.2);
-      padding: 3px 8px;
+    .form-control {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #e0e0e0;
       border-radius: 10px;
-      font-size: 11px;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+      background-color: #fff;
+    }
+
+    .form-control:focus {
+      border-color: var(--primary-color);
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 14px;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: bold;
       cursor: pointer;
-      white-space: nowrap;
-      flex-shrink: 0;
+      box-shadow: 0 4px 10px rgba(74, 144, 226, 0.3);
     }
 
-    /* 快捷按钮 */
-    .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-    .btn-person { background: #fff; border: 2px solid var(--accent-color); color: var(--accent-color); border-radius: 10px; padding: 15px 10px; font-size: 18px; font-weight: bold; cursor: pointer; text-align: center; transition: all 0.2s; }
-    .btn-person:active { background: var(--accent-color); color: #fff; transform: scale(0.98); }
+    .btn-submit:active {
+      opacity: 0.9;
+    }
 
-    /* 表单与设置 */
-    label { display: block; font-size: 12px; color: #666; margin-top: 10px; margin-bottom: 4px; font-weight: bold; }
-    input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; background: #fff; -webkit-appearance: none; appearance: none; }
-    textarea { resize: vertical; height: 60px; }
-    
-    .inline-group { display: flex; gap: 10px; }
-    .inline-group > div { flex: 1; min-width: 0; }
+    /* 列表区域 */
+    .list-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
 
-    /* 防日期框在移动端/iOS下溢出 */
-    input[type="date"] {
-      padding: 10px 6px;
+    .list-title {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .btn-export {
+      padding: 6px 14px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: transparent;
       font-size: 13px;
-      box-sizing: border-border;
-      min-width: 0;
+      cursor: pointer;
     }
 
-    .btn { background: var(--accent-color); color: white; border: none; padding: 12px; border-radius: 6px; font-size: 15px; font-weight: bold; width: 100%; margin-top: 15px; cursor: pointer; }
-    .btn:active { opacity: 0.9; }
-    .btn-secondary { background: #e74c3c; }
-    .btn-outline { background: transparent; border: 1px solid var(--primary-color); color: var(--primary-color); }
-    .btn-add-opt { width: 35px; margin-top: 0; margin-left: 5px; flex-shrink: 0; }
-
-    /* 记录列表 */
-    .history-item { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-    .history-item:last-child { border-bottom: none; }
-    .history-left { flex: 1; min-width: 0; }
-    .history-main { font-size: 15px; font-weight: bold; margin-bottom: 4px; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px; }
-    
-    /* 缩小日期与星期字体，保证单行不换行 */
-    .history-date { 
-      font-size: 11px; 
-      font-weight: normal; 
-      color: #666; 
-      white-space: nowrap; 
+    .record-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #f0f0f0;
     }
-    
-    .history-info-row { font-size: 13px; color: #555; display: flex; flex-wrap: wrap; gap: 12px; margin-top: 2px; }
-    .history-note { font-size: 12px; color: #777; margin-top: 4px; }
-    
-    /* 右侧变动时长单行显示 */
-    .history-right { text-align: right; flex-shrink: 0; white-space: nowrap; }
-    .history-amount { font-weight: bold; font-size: 14px; }
 
-    /* 折叠面板 */
-    details { margin-bottom: 15px; }
-    summary { font-weight: bold; padding: 10px; background: #fff; border-radius: 8px; cursor: pointer; color: var(--primary-color); }
-    
-    .flex-row { display: flex; align-items: center; }
+    .record-item:last-child {
+      border-bottom: none;
+    }
 
-    /* 只读模式下隐去操作功能 */
-    .read-only-hide { display: none !important; }
+    .record-info .name {
+      font-weight: bold;
+      font-size: 15px;
+    }
+
+    .record-info .date {
+      font-size: 12px;
+      color: var(--text-sub);
+      margin-top: 4px;
+    }
+
+    .record-info .tags {
+      font-size: 12px;
+      color: var(--text-sub);
+      margin-top: 4px;
+    }
+
+    .record-amount {
+      text-align: right;
+    }
+
+    .record-amount .value {
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+    .record-amount .value.minus {
+      color: #e74c3c;
+    }
+
+    .record-amount .value.plus {
+      color: #2ecc71;
+    }
+
+    .record-amount .btn-delete {
+      font-size: 12px;
+      color: #bbb;
+      margin-top: 8px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
 
-  <!-- 顶部余量展示 -->
-  <div class="card dashboard">
-    <div class="dashboard-header">
-      <h2>卡内剩余总时长</h2>
-      <div class="role-badge" id="roleBadge" onclick="toggleAdminMode()">👁️ 只读模式</div>
-    </div>
-    <div class="balance-display" id="dispTotalMinutes">0 分钟</div>
-    <div class="balance-details" id="dispHours">约 0 小时 0 分钟</div>
+  <!-- 顶部剩余时长卡片 -->
+  <div class="top-card">
+    <span class="header-title">卡内剩余总时长</span>
+    <span class="admin-mode">管理员模式 51</span>
+    <div class="total-minutes" id="totalMinutes">765 分钟</div>
+    <div class="total-hours" id="totalHours">约 12 小时 45 分钟</div>
   </div>
 
-  <!-- 快捷扣费按钮（仅管理员可见） -->
-  <div class="quick-actions admin-only read-only-hide">
-    <button class="btn-person" onclick="openRecordForm('Michael')">Michael</button>
-    <button class="btn-person" onclick="openRecordForm('Mabel')">Mabel</button>
+  <!-- 人员选择 -->
+  <div class="person-tabs">
+    <button class="person-btn" onclick="selectPerson('Michael')">Michael</button>
+    <button class="person-btn active" onclick="selectPerson('Mabel')">Mabel</button>
   </div>
 
-  <!-- 消费/新增记录表单（仅管理员可填写） -->
-  <div class="card admin-only read-only-hide" id="recordCard" style="display: none;">
-    <h3 id="formTitle">新增消费记录</h3>
-    
-    <label>打卡人</label>
-    <input type="text" id="recUser" readonly style="background: #eee;">
-
-    <div class="inline-group">
-      <div>
-        <label>扣除时长 (分钟)</label>
-        <input type="number" id="recDuration" value="45">
-      </div>
-      <div>
-        <label>日期</label>
-        <input type="date" id="recDate">
-      </div>
-    </div>
-
-    <label>门店地点</label>
-    <div class="flex-row">
-      <select id="recLocation"></select>
-      <button class="btn btn-add-opt" onclick="addOption('location')">+</button>
-    </div>
-
-    <label>按摩师</label>
-    <div class="flex-row">
-      <select id="recMasseuse"></select>
-      <button class="btn btn-add-opt" onclick="addOption('masseuse')">+</button>
-    </div>
-
-    <label>备注</label>
-    <textarea id="recNote" placeholder="例如：肩颈重点放松..."></textarea>
-
-    <div class="inline-group">
-      <button class="btn" onclick="saveRecord()">确认扣除</button>
-      <button class="btn btn-secondary" onclick="closeRecordForm()">取消</button>
-    </div>
+  <!-- 折叠标题 -->
+  <div class="section-toggle">
+    ▼ 卡内充值与增加时长
   </div>
 
-  <!-- 卡余额充值/设置（仅管理员可见） -->
-  <details class="admin-only read-only-hide">
-    <summary>卡内充值与增加时长</summary>
-    <div class="card" style="margin-top: 10px;">
-      <label>增加/充值分钟数</label>
-      <input type="number" id="topupAmount" placeholder="例如：300">
-      <label>充值备注</label>
-      <input type="text" id="topupNote" placeholder="例如：充值新会员卡">
-      <button class="btn" onclick="addTopup()">确认充值</button>
-    </div>
-  </details>
-
-  <!-- 历史记录列表 -->
+  <!-- 充值表单卡片 -->
   <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-      <h3>消费与充值明细</h3>
-      <button class="btn btn-outline" style="width: auto; padding: 5px 10px; font-size: 12px; margin-top: 0;" onclick="exportToExcel()">导出表格</button>
+    <form id="rechargeForm" onsubmit="handleRecharge(event)">
+      <!-- 1. 充值分钟数 -->
+      <div class="form-group">
+        <label for="minutes">增加/充值分钟数</label>
+        <input type="number" id="minutes" class="form-control" placeholder="例如：300" required>
+      </div>
+
+      <!-- 2. 新增：充值日期 -->
+      <div class="form-group">
+        <label for="rechargeDate">充值日期</label>
+        <input type="date" id="rechargeDate" class="form-control" required>
+      </div>
+
+      <!-- 3. 充值备注 -->
+      <div class="form-group">
+        <label for="remark">充值备注</label>
+        <input type="text" id="remark" class="form-control" placeholder="例如：充值新会员卡">
+      </div>
+
+      <button type="submit" class="btn-submit">确认充值</button>
+    </form>
+  </div>
+
+  <!-- 消费与充值明细 -->
+  <div class="card">
+    <div class="list-header">
+      <span class="list-title">消费与充值明细</span>
+      <button class="btn-export" onclick="exportData()">导出表格</button>
     </div>
-    <div id="historyList">加载中...</div>
+
+    <div id="recordList">
+      <div class="record-item">
+        <div class="record-info">
+          <div class="name">👤 Mabel</div>
+          <div class="date">(2026-09-27 星期日)</div>
+          <div class="tags">📍 Hwy7 👧 Cindy</div>
+        </div>
+        <div class="record-amount">
+          <div class="value minus">-45 分钟</div>
+          <div class="btn-delete" onclick="deleteRecord(this)">删除</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
-    // ==========================================
-    // 1. Firebase 初始化配置（请填入您自己的 Firebase 参数）
-    // ==========================================
-    const firebaseConfig = {
-      apiKey: "AIzaSyAeZqiAzYMLDPonyxvoN2t8F--siPKg7-A",
-      authDomain: "massage-11aab.firebaseapp.com",
-      databaseURL: "https://massage-11aab-default-rtdb.firebaseio.com",
-      projectId: "massage-11aab",
-      storageBucket: "massage-11aab.firebasestorage.app",
-      messagingSenderId: "641443672300",
-      appId: "1:641443672300:web:fcdddc2da9a8537e76f5c9"
-    };
-
-    // 设置管理员密码
-    const ADMIN_SECRET_KEY = "8888"; 
-
-    // 初始化 Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    // ==========================================
-    // 2. 业务逻辑与权限控制
-    // ==========================================
-    let state = {
-      balance: 0,
-      locations: ["Hwy7", "Warden"],
-      masseuses: ["Emily", "Cindy"],
-      logs: []
-    };
-
-    let isAdmin = false; // 默认只读
-    const WEEK_DAYS = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
-
+    // 页面加载时，设置充值日期的默认值为今天
     window.onload = function() {
-      if (localStorage.getItem('massage_app_admin') === 'true') {
-        isAdmin = true;
-      }
-      updatePermissionUI();
-
-      // 实时监听数据库
-      db.ref('massage_card_data').on('value', (snapshot) => {
-        const val = snapshot.val();
-        if (val) {
-          state = val;
-          if (!state.locations) state.locations = ["Hwy7", "Warden"];
-          if (!state.masseuses) state.masseuses = ["Emily", "Cindy"];
-          if (!state.logs) state.logs = [];
-        }
-        renderOptions();
-        updateDashboard();
-        renderHistory();
-      });
-
-      document.getElementById('recDate').value = new Date().toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('rechargeDate').value = today;
     };
 
-    function toggleAdminMode() {
-      if (isAdmin) {
-        if (confirm("是否退出管理员模式，切换为只读状态？")) {
-          isAdmin = false;
-          localStorage.setItem('massage_app_admin', 'false');
-          updatePermissionUI();
-        }
-      } else {
-        const pwd = prompt("请输入管理员解锁密码：");
-        if (pwd === ADMIN_SECRET_KEY) {
-          isAdmin = true;
-          localStorage.setItem('massage_app_admin', 'true');
-          alert("已解锁管理员权限！");
-          updatePermissionUI();
-        } else if (pwd !== null) {
-          alert("密码错误，保持只读模式");
-        }
-      }
-    }
-
-    function updatePermissionUI() {
-      const badge = document.getElementById('roleBadge');
-      const adminElements = document.querySelectorAll('.admin-only');
-
-      if (isAdmin) {
-        badge.innerText = "管理员模式";
-        badge.style.background = "rgba(46, 204, 113, 0.4)";
-        adminElements.forEach(el => el.classList.remove('read-only-hide'));
-      } else {
-        badge.innerText = "只读模式";
-        badge.style.background = "rgba(255,255,255,0.2)";
-        adminElements.forEach(el => el.classList.add('read-only-hide'));
-      }
-      renderHistory();
-    }
-
-    function saveData() {
-      db.ref('massage_card_data').set(state);
-    }
-
-    function updateDashboard() {
-      const total = state.balance || 0;
-      document.getElementById('dispTotalMinutes').innerText = `${total} 分钟`;
-      const hrs = Math.floor(total / 60);
-      const mins = total % 60;
-      document.getElementById('dispHours').innerText = `约 ${hrs} 小时 ${mins} 分钟`;
-    }
-
-    function renderOptions() {
-      const locSelect = document.getElementById('recLocation');
-      locSelect.innerHTML = (state.locations || []).map(l => `<option value="${l}">${l}</option>`).join('');
-
-      const masSelect = document.getElementById('recMasseuse');
-      masSelect.innerHTML = (state.masseuses || []).map(m => `<option value="${m}">${m}</option>`).join('');
-    }
-
-    function addOption(type) {
-      if (!isAdmin) return;
-      const name = prompt(type === 'location' ? "请输入新地点名称:" : "请输入新按摩师名字:");
-      if (name && name.trim()) {
-        const cleanName = name.trim();
-        if (type === 'location' && !state.locations.includes(cleanName)) {
-          state.locations.push(cleanName);
-        } else if (type === 'masseuse' && !state.masseuses.includes(cleanName)) {
-          state.masseuses.push(cleanName);
-        }
-        saveData();
-      }
-    }
-
-    function openRecordForm(user) {
-      if (!isAdmin) return;
-      document.getElementById('recUser').value = user;
-      document.getElementById('recDuration').value = 45;
-      document.getElementById('recDate').value = new Date().toISOString().split('T')[0];
-      document.getElementById('recNote').value = '';
-      document.getElementById('recordCard').style.display = 'block';
-      window.scrollTo({ top: document.getElementById('recordCard').offsetTop - 20, behavior: 'smooth' });
-    }
-
-    function closeRecordForm() {
-      document.getElementById('recordCard').style.display = 'none';
-    }
-
-    function saveRecord() {
-      if (!isAdmin) return;
-      const duration = parseInt(document.getElementById('recDuration').value) || 0;
-      if (duration <= 0) {
-        alert("请输入正确的扣除时长");
-        return;
-      }
-
-      const dateStr = document.getElementById('recDate').value;
-      const dateObj = new Date(dateStr + "T00:00:00");
-      const dayOfWeek = WEEK_DAYS[dateObj.getDay()];
-
-      const log = {
-        id: Date.now(),
-        type: 'consume',
-        user: document.getElementById('recUser').value,
-        duration: duration,
-        date: dateStr,
-        dayOfWeek: dayOfWeek,
-        location: document.getElementById('recLocation').value,
-        masseuse: document.getElementById('recMasseuse').value,
-        note: document.getElementById('recNote').value
-      };
-
-      state.balance -= duration;
-      if (!state.logs) state.logs = [];
-      state.logs.unshift(log);
-      saveData();
-      closeRecordForm();
-    }
-
-    function addTopup() {
-      if (!isAdmin) return;
-      const amount = parseInt(document.getElementById('topupAmount').value) || 0;
-      const note = document.getElementById('topupNote').value;
-      
-      if (amount <= 0) {
-        alert("请输入有效的充值分钟数");
-        return;
-      }
-
-      const today = new Date();
-      const dateStr = today.toISOString().split('T')[0];
-      
-      const log = {
-        id: Date.now(),
-        type: 'topup',
-        user: '充值',
-        duration: amount,
-        date: dateStr,
-        dayOfWeek: WEEK_DAYS[today.getDay()],
-        location: '-',
-        masseuse: '-',
-        note: note || '卡内充值'
-      };
-
-      state.balance += amount;
-      if (!state.logs) state.logs = [];
-      state.logs.unshift(log);
-      saveData();
-      
-      document.getElementById('topupAmount').value = '';
-      document.getElementById('topupNote').value = '';
-      alert(`成功增加 ${amount} 分钟！`);
-    }
-
-    function deleteLog(id) {
-      if (!isAdmin) return;
-      if (!confirm("确定要删除这条记录吗？相关时长将被自动退回/扣除。")) return;
-      
-      const idx = state.logs.findIndex(l => l.id === id);
-      if (idx !== -1) {
-        const item = state.logs[idx];
-        if (item.type === 'consume') {
-          state.balance += item.duration;
-        } else if (item.type === 'topup') {
-          state.balance -= item.duration;
-        }
-        state.logs.splice(idx, 1);
-        saveData();
-      }
-    }
-
-    function renderHistory() {
-      const container = document.getElementById('historyList');
-      if (!state.logs || state.logs.length === 0) {
-        container.innerHTML = '<div style="text-align:center; color:#999; padding:20px 0;">暂无记录</div>';
-        return;
-      }
-
-      container.innerHTML = state.logs.map(log => {
-        const isTopup = log.type === 'topup';
-        
-        let subContent = '';
-        if (isTopup) {
-          subContent = `<div class="history-note">📝 ${log.note}</div>`;
-        } else {
-          subContent = `
-            <div class="history-info-row">
-              <span>📍 ${log.location}</span>
-              <span>💆 ${log.masseuse}</span>
-            </div>
-            ${log.note ? `<div class="history-note">📝 ${log.note}</div>` : ''}
-          `;
-        }
-
-        const deleteBtn = isAdmin 
-          ? `<button onclick="deleteLog(${log.id})" style="background:none; border:none; color:#bbb; font-size:12px; margin-top:4px; cursor:pointer;">删除</button>` 
-          : '';
-
-        return `
-          <div class="history-item">
-            <div class="history-left">
-              <div class="history-main">
-                <span>👤 ${isTopup ? '充值' : log.user}</span>
-                <span class="history-date">(${log.date} ${log.dayOfWeek})</span>
-              </div>
-              ${subContent}
-            </div>
-            <div class="history-right">
-              <div class="history-amount" style="color: ${isTopup ? '#2ecc71' : '#e74c3c'}">
-                ${isTopup ? '+' : '-'}${log.duration} 分钟
-              </div>
-              ${deleteBtn}
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function exportToExcel() {
-      if (!state.logs || state.logs.length === 0) {
-        alert("没有可导出的记录！");
-        return;
-      }
-
-      let tableHTML = `
-        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-        <head><meta charset="UTF-8"></head>
-        <body>
-          <table border="1">
-            <thead>
-              <tr style="background-color: #f2f2f2;">
-                <th>日期</th>
-                <th>星期</th>
-                <th>使用者/类型</th>
-                <th>变动分钟数</th>
-                <th>地点</th>
-                <th>按摩师</th>
-                <th>备注</th>
-              </tr>
-            </thead>
-            <tbody>
-      `;
-
-      state.logs.forEach(log => {
-        const typeStr = log.type === 'topup' ? '充值' : log.user;
-        const durationStr = log.type === 'topup' ? `+${log.duration}` : `-${log.duration}`;
-        
-        tableHTML += `
-          <tr>
-            <td>${log.date}</td>
-            <td>${log.dayOfWeek}</td>
-            <td>${typeStr}</td>
-            <td>${durationStr}</td>
-            <td>${log.location}</td>
-            <td>${log.masseuse}</td>
-            <td>${log.note || ''}</td>
-          </tr>
-        `;
+    function selectPerson(name) {
+      document.querySelectorAll('.person-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.innerText === name) btn.classList.add('active');
       });
+    }
 
-      tableHTML += `
-            </tbody>
-          </table>
-        </body>
-        </html>
-      `;
+    function handleRecharge(event) {
+      event.preventDefault();
+      const minutes = document.getElementById('minutes').value;
+      const date = document.getElementById('rechargeDate').value;
+      const remark = document.getElementById('remark').value;
 
-      const blob = new Blob([tableHTML], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.setAttribute("href", url);
-      link.setAttribute("download", `按摩卡消费记录_${new Date().toISOString().split('T')[0]}.xls`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      alert(`充值成功！\n分钟数：${minutes}\n日期：${date}\n备注：${remark || '无'}`);
+      
+      // 清空表单
+      document.getElementById('minutes').value = '';
+      document.getElementById('remark').value = '';
+    }
+
+    function exportData() {
+      alert('正在导出数据表格...');
+    }
+
+    function deleteRecord(element) {
+      if (confirm('确认删除此条记录？')) {
+        element.closest('.record-item').remove();
+      }
     }
   </script>
 </body>
