@@ -70,7 +70,7 @@
       opacity: 0.85;
     }
 
-    /* 快捷人员按钮 */
+    /* 人员选择选项卡 */
     .person-tabs {
       display: flex;
       gap: 12px;
@@ -128,6 +128,7 @@
       margin-bottom: 8px;
     }
 
+    /* 样式修复：防止 iOS Safari 下 input 类型为 date 时产生溢出 */
     .form-control {
       width: 100%;
       max-width: 100%;
@@ -139,11 +140,10 @@
       outline: none;
       transition: border-color 0.2s;
       background-color: #fff;
-      -webkit-appearance: none; /* 清除iOS默认样式，防止宽度溢出 */
+      -webkit-appearance: none;
       appearance: none;
     }
 
-    /* 日期选择框居中且占满行 */
     input[type="date"].form-control {
       text-align: center;
       display: block;
@@ -168,6 +168,25 @@
 
     .btn-submit:active {
       opacity: 0.9;
+    }
+
+    /* 快捷扣减按钮区域 */
+    .quick-deduct-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .btn-deduct {
+      flex: 1;
+      padding: 12px;
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
     }
 
     /* 列表区域 */
@@ -257,8 +276,8 @@
 
   <!-- 人员选择 -->
   <div class="person-tabs">
-    <button class="person-btn" onclick="selectPerson('Michael')">Michael</button>
-    <button class="person-btn active" onclick="selectPerson('Mabel')">Mabel</button>
+    <button class="person-btn active" id="btnMichael" onclick="selectPerson('Michael')">Michael</button>
+    <button class="person-btn" id="btnMabel" onclick="selectPerson('Mabel')">Mabel</button>
   </div>
 
   <!-- 折叠标题 -->
@@ -266,16 +285,16 @@
     ▼ 卡内充值与增加时长
   </div>
 
-  <!-- 充值表单卡片 -->
+  <!-- 充值与消费表单卡片 -->
   <div class="card">
     <form id="rechargeForm" onsubmit="handleRecharge(event)">
-      <!-- 1. 充值分钟数 -->
+      <!-- 1. 充值/按摩分钟数 -->
       <div class="form-group">
         <label for="minutes">增加/充值分钟数</label>
         <input type="number" id="minutes" class="form-control" placeholder="例如：300" required>
       </div>
 
-      <!-- 2. 充值日期 -->
+      <!-- 2. 充值日期 (修复防溢出样式) -->
       <div class="form-group">
         <label for="rechargeDate">充值日期</label>
         <input type="date" id="rechargeDate" class="form-control" required>
@@ -289,6 +308,18 @@
 
       <button type="submit" class="btn-submit">确认充值</button>
     </form>
+
+    <hr style="margin: 20px 0; border: none; border-top: 1px dashed #eee;">
+
+    <!-- 快捷按摩时间扣除区域 -->
+    <div class="form-group">
+      <label>快捷扣除按摩时间</label>
+      <div class="quick-deduct-group">
+        <button type="button" class="btn-deduct" onclick="deductTime(45)">扣除 45 分钟</button>
+        <button type="button" class="btn-deduct" onclick="deductTime(60)">扣除 60 分钟</button>
+        <button type="button" class="btn-deduct" onclick="deductTime(90)">扣除 90 分钟</button>
+      </div>
+    </div>
   </div>
 
   <!-- 消费与充值明细 -->
@@ -307,49 +338,113 @@
         </div>
         <div class="record-amount">
           <div class="value minus">-45 分钟</div>
-          <div class="btn-delete" onclick="deleteRecord(this)">删除</div>
+          <div class="btn-delete" onclick="deleteRecord(this, -45)">删除</div>
         </div>
       </div>
     </div>
   </div>
 
   <script>
-    // 页面加载时，自动填充当天日期 (YYYY-MM-DD)
+    // 全局数据状态
+    let currentTotalMinutes = 765;
+    let selectedPerson = 'Michael';
+
+    // 页面初始化
     window.onload = function() {
+      // 默认选中当前日期 YYYY-MM-DD
       const today = new Date().toISOString().split('T')[0];
       document.getElementById('rechargeDate').value = today;
+      updateDisplay();
     };
 
-    function selectPerson(name) {
-      document.querySelectorAll('.person-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.innerText === name) btn.classList.add('active');
-      });
+    // 更新页面显示的总时长
+    function updateDisplay() {
+      document.getElementById('totalMinutes').innerText = `${currentTotalMinutes} 分钟`;
+      const hours = Math.floor(Math.abs(currentTotalMinutes) / 60);
+      const mins = Math.abs(currentTotalMinutes) % 60;
+      const prefix = currentTotalMinutes < 0 ? '负 ' : '约 ';
+      document.getElementById('totalHours').innerText = `${prefix}${hours} 小时 ${mins} 分钟`;
     }
 
+    // 切换当前人员 (Michael / Mabel)
+    function selectPerson(name) {
+      selectedPerson = name;
+      document.getElementById('btnMichael').classList.toggle('active', name === 'Michael');
+      document.getElementById('btnMabel').classList.toggle('active', name === 'Mabel');
+    }
+
+    // 充值逻辑
     function handleRecharge(event) {
       event.preventDefault();
-      const minutes = document.getElementById('minutes').value;
-      const date = document.getElementById('rechargeDate').value;
-      const remark = document.getElementById('remark').value;
+      const minutesInput = document.getElementById('minutes');
+      const minutesValue = parseInt(minutesInput.value, 10);
+      const dateValue = document.getElementById('rechargeDate').value;
+      const remarkValue = document.getElementById('remark').value || '充值';
 
-      alert(`充值成功！\n分钟数：${minutes}\n日期：${date}\n备注：${remark || '无'}`);
-      
-      // 清空表单，并重新设置默认日期
-      document.getElementById('minutes').value = '';
+      if (isNaN(minutesValue) || minutesValue <= 0) {
+        alert('请输入正确的充值分钟数');
+        return;
+      }
+
+      // 更新总数
+      currentTotalMinutes += minutesValue;
+      updateDisplay();
+
+      // 添加记录到列表
+      addRecordToList(selectedPerson, dateValue, `➕ ${remarkValue}`, minutesValue, true);
+
+      // 清空输入框
+      minutesInput.value = '';
       document.getElementById('remark').value = '';
-      const today = new Date().toISOString().split('T')[0];
-      document.getElementById('rechargeDate').value = today;
     }
 
-    function exportData() {
-      alert('正在导出数据表格...');
+    // 扣除按摩时间逻辑 (45, 60, 90 分钟)
+    function deductTime(minutes) {
+      const dateValue = document.getElementById('rechargeDate').value || new Date().toISOString().split('T')[0];
+      
+      currentTotalMinutes -= minutes;
+      updateDisplay();
+
+      // 添加扣除记录到列表
+      addRecordToList(selectedPerson, dateValue, '按摩消费', -minutes, false);
     }
 
-    function deleteRecord(element) {
+    // 将新记录插入列表顶部
+    function addRecordToList(person, date, tagText, minutes, isPlus) {
+      const recordList = document.getElementById('recordList');
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'record-item';
+
+      const signStr = isPlus ? `+${minutes}` : `${minutes}`;
+      const valClass = isPlus ? 'plus' : 'minus';
+
+      itemDiv.innerHTML = `
+        <div class="record-info">
+          <div class="name">👤 ${person}</div>
+          <div class="date">(${date})</div>
+          <div class="tags">${tagText}</div>
+        </div>
+        <div class="record-amount">
+          <div class="value ${valClass}">${signStr} 分钟</div>
+          <div class="btn-delete" onclick="deleteRecord(this, ${minutes})">删除</div>
+        </div>
+      `;
+
+      recordList.insertBefore(itemDiv, recordList.firstChild);
+    }
+
+    // 删除记录逻辑
+    function deleteRecord(element, minutesChange) {
       if (confirm('确认删除此条记录？')) {
+        currentTotalMinutes -= minutesChange;
+        updateDisplay();
         element.closest('.record-item').remove();
       }
+    }
+
+    // 导出数据
+    function exportData() {
+      alert('正在导出表格数据...');
     }
   </script>
 </body>
