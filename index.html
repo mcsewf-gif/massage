@@ -2,6 +2,351 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>卡内剩余总时长</title>
+  <style>
+    :root {
+      --primary-color: #4a90e2;
+      --bg-color: #f4f6f9;
+      --card-bg: #ffffff;
+      --text-main: #333333;
+      --text-sub: #888888;
+      --border-radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      padding: 16px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    /* 顶部卡片 */
+    .top-card {
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      color: white;
+      padding: 24px 20px;
+      border-radius: var(--border-radius);
+      text-align: center;
+      position: relative;
+      margin-bottom: 16px;
+      box-shadow: 0 8px 20px rgba(30, 60, 114, 0.15);
+    }
+
+    .top-card .header-title {
+      font-size: 14px;
+      opacity: 0.8;
+      position: absolute;
+      top: 16px;
+      left: 20px;
+    }
+
+    .top-card .admin-mode {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+    }
+
+    .top-card .total-minutes {
+      font-size: 42px;
+      font-weight: bold;
+      margin: 20px 0 6px 0;
+    }
+
+    .top-card .total-hours {
+      font-size: 14px;
+      opacity: 0.85;
+    }
+
+    /* 快捷人员按钮 */
+    .person-tabs {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .person-btn {
+      flex: 1;
+      padding: 14px;
+      background-color: var(--card-bg);
+      border: 2px solid var(--primary-color);
+      border-radius: var(--border-radius);
+      color: var(--primary-color);
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+
+    .person-btn.active {
+      background-color: var(--primary-color);
+      color: white;
+    }
+
+    /* 折叠标题 */
+    .section-toggle {
+      font-size: 16px;
+      font-weight: bold;
+      margin: 16px 4px 12px 4px;
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    /* 功能卡片 */
+    .card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: var(--border-radius);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+      margin-bottom: 16px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 8px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+      background-color: #fff;
+    }
+
+    .form-control:focus {
+      border-color: var(--primary-color);
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 14px;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(74, 144, 226, 0.3);
+    }
+
+    .btn-submit:active {
+      opacity: 0.9;
+    }
+
+    /* 列表区域 */
+    .list-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .list-title {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .btn-export {
+      padding: 6px 14px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: transparent;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .record-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .record-item:last-child {
+      border-bottom: none;
+    }
+
+    .record-info .name {
+      font-weight: bold;
+      font-size: 15px;
+    }
+
+    .record-info .date {
+      font-size: 12px;
+      color: var(--text-sub);
+      margin-top: 4px;
+    }
+
+    .record-info .tags {
+      font-size: 12px;
+      color: var(--text-sub);
+      margin-top: 4px;
+    }
+
+    .record-amount {
+      text-align: right;
+    }
+
+    .record-amount .value {
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+    .record-amount .value.minus {
+      color: #e74c3c;
+    }
+
+    .record-amount .value.plus {
+      color: #2ecc71;
+    }
+
+    .record-amount .btn-delete {
+      font-size: 12px;
+      color: #bbb;
+      margin-top: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 顶部剩余时长卡片 -->
+  <div class="top-card">
+    <span class="header-title">卡内剩余总时长</span>
+    <span class="admin-mode">管理员模式 51</span>
+    <div class="total-minutes" id="totalMinutes">765 分钟</div>
+    <div class="total-hours" id="totalHours">约 12 小时 45 分钟</div>
+  </div>
+
+  <!-- 人员选择 -->
+  <div class="person-tabs">
+    <button class="person-btn" onclick="selectPerson('Michael')">Michael</button>
+    <button class="person-btn active" onclick="selectPerson('Mabel')">Mabel</button>
+  </div>
+
+  <!-- 折叠标题 -->
+  <div class="section-toggle">
+    ▼ 卡内充值与增加时长
+  </div>
+
+  <!-- 充值表单卡片 -->
+  <div class="card">
+    <form id="rechargeForm" onsubmit="handleRecharge(event)">
+      <!-- 1. 充值分钟数 -->
+      <div class="form-group">
+        <label for="minutes">增加/充值分钟数</label>
+        <input type="number" id="minutes" class="form-control" placeholder="例如：300" required>
+      </div>
+
+      <!-- 2. 新增：充值日期 -->
+      <div class="form-group">
+        <label for="rechargeDate">充值日期</label>
+        <input type="date" id="rechargeDate" class="form-control" required>
+      </div>
+
+      <!-- 3. 充值备注 -->
+      <div class="form-group">
+        <label for="remark">充值备注</label>
+        <input type="text" id="remark" class="form-control" placeholder="例如：充值新会员卡">
+      </div>
+
+      <button type="submit" class="btn-submit">确认充值</button>
+    </form>
+  </div>
+
+  <!-- 消费与充值明细 -->
+  <div class="card">
+    <div class="list-header">
+      <span class="list-title">消费与充值明细</span>
+      <button class="btn-export" onclick="exportData()">导出表格</button>
+    </div>
+
+    <div id="recordList">
+      <div class="record-item">
+        <div class="record-info">
+          <div class="name">👤 Mabel</div>
+          <div class="date">(2026-09-27 星期日)</div>
+          <div class="tags">📍 Hwy7 👧 Cindy</div>
+        </div>
+        <div class="record-amount">
+          <div class="value minus">-45 分钟</div>
+          <div class="btn-delete" onclick="deleteRecord(this)">删除</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 页面加载时，设置充值日期的默认值为今天
+    window.onload = function() {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('rechargeDate').value = today;
+    };
+
+    function selectPerson(name) {
+      document.querySelectorAll('.person-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.innerText === name) btn.classList.add('active');
+      });
+    }
+
+    function handleRecharge(event) {
+      event.preventDefault();
+      const minutes = document.getElementById('minutes').value;
+      const date = document.getElementById('rechargeDate').value;
+      const remark = document.getElementById('remark').value;
+
+      alert(`充值成功！\n分钟数：${minutes}\n日期：${date}\n备注：${remark || '无'}`);
+      
+      // 清空表单
+      document.getElementById('minutes').value = '';
+      document.getElementById('remark').value = '';
+    }
+
+    function exportData() {
+      alert('正在导出数据表格...');
+    }
+
+    function deleteRecord(element) {
+      if (confirm('确认删除此条记录？')) {
+        element.closest('.record-item').remove();
+      }
+    }
+  </script>
+</body>
+</html>
+10/3-1
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>按摩卡余量管理</title>
   
@@ -29,7 +374,7 @@
     
     .card { background: var(--card-bg); border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
     
-    /* 顶部剩余时间 */
+    /* 头部剩余时间 */
     .dashboard { text-align: center; background: linear-gradient(135deg, #2c3e50, #3498db); color: #fff; padding-top: 15px; }
     
     /* 顶部标题与角色按钮横向对齐防重叠 */
@@ -72,7 +417,7 @@
     input[type="date"] {
       padding: 10px 6px;
       font-size: 13px;
-      box-sizing: border-box;
+      box-sizing: border-border;
       min-width: 0;
     }
 
@@ -176,11 +521,6 @@
     <div class="card" style="margin-top: 10px;">
       <label>增加/充值分钟数</label>
       <input type="number" id="topupAmount" placeholder="例如：300">
-      
-      <!-- 添加充值日期选择框 -->
-      <label>充值日期</label>
-      <input type="date" id="topupDate">
-
       <label>充值备注</label>
       <input type="text" id="topupNote" placeholder="例如：充值新会员卡">
       <button class="btn" onclick="addTopup()">确认充值</button>
@@ -200,16 +540,14 @@
     // ==========================================
     // 1. Firebase 初始化配置（请填入您自己的 Firebase 参数）
     // ==========================================
-    const firebaseConfig = {   
-  apiKey: "AIzaSyAeZqiAzYMLDPonyxvoN2t8F--siPKg7-A",
-  authDomain: "massage-11aab.firebaseapp.com",
-  databaseURL: "https://massage-11aab-default-rtdb.firebaseio.com",
-  projectId: "massage-11aab",
-  storageBucket: "massage-11aab.firebasestorage.app",
-  messagingSenderId: "641443672300",
-  appId: "1:641443672300:web:31345525cd78654776f5c9",
-  measurementId: "G-JLCEESN2W0"
-};
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
     };
 
     // 设置管理员密码
@@ -252,10 +590,7 @@
         renderHistory();
       });
 
-      // 默认将打卡日期和充值日期均初始化为当天
-      const todayStr = new Date().toISOString().split('T')[0];
-      document.getElementById('recDate').value = todayStr;
-      document.getElementById('topupDate').value = todayStr;
+      document.getElementById('recDate').value = new Date().toISOString().split('T')[0];
     };
 
     function toggleAdminMode() {
@@ -283,11 +618,11 @@
       const adminElements = document.querySelectorAll('.admin-only');
 
       if (isAdmin) {
-        badge.innerText = "管理员模式";
+        badge.innerText = "✏️ 管理员模式";
         badge.style.background = "rgba(46, 204, 113, 0.4)";
         adminElements.forEach(el => el.classList.remove('read-only-hide'));
       } else {
-        badge.innerText = "只读模式";
+        badge.innerText = "👁️ 只读模式";
         badge.style.background = "rgba(255,255,255,0.2)";
         adminElements.forEach(el => el.classList.add('read-only-hide'));
       }
@@ -376,7 +711,6 @@
     function addTopup() {
       if (!isAdmin) return;
       const amount = parseInt(document.getElementById('topupAmount').value) || 0;
-      const dateStr = document.getElementById('topupDate').value || new Date().toISOString().split('T')[0];
       const note = document.getElementById('topupNote').value;
       
       if (amount <= 0) {
@@ -384,9 +718,8 @@
         return;
       }
 
-      // 获取选定日期的星期几
-      const dateObj = new Date(dateStr + "T00:00:00");
-      const dayOfWeek = WEEK_DAYS[dateObj.getDay()];
+      const today = new Date();
+      const dateStr = today.toISOString().split('T')[0];
       
       const log = {
         id: Date.now(),
@@ -394,7 +727,7 @@
         user: '充值',
         duration: amount,
         date: dateStr,
-        dayOfWeek: dayOfWeek,
+        dayOfWeek: WEEK_DAYS[today.getDay()],
         location: '-',
         masseuse: '-',
         note: note || '卡内充值'
@@ -407,7 +740,6 @@
       
       document.getElementById('topupAmount').value = '';
       document.getElementById('topupNote').value = '';
-      document.getElementById('topupDate').value = new Date().toISOString().split('T')[0]; // 重置充值日期为今天
       alert(`成功增加 ${amount} 分钟！`);
     }
 
@@ -536,3 +868,5 @@
   </script>
 </body>
 </html>
+
+
