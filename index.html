@@ -68,12 +68,13 @@
     .inline-group { display: flex; gap: 10px; }
     .inline-group > div { flex: 1; min-width: 0; }
 
-    /* 防日期框在移动端/iOS下溢出 */
+    /* 防日期框在移动端/iOS下溢出，并强制左对齐 */
     input[type="date"] {
-      padding: 10px 6px;
-      font-size: 13px;
+      padding: 10px;
+      font-size: 14px;
       box-sizing: border-box;
       min-width: 0;
+      text-align: left;
     }
 
     .btn { background: var(--accent-color); color: white; border: none; padding: 12px; border-radius: 6px; font-size: 15px; font-weight: bold; width: 100%; margin-top: 15px; cursor: pointer; }
