@@ -72,7 +72,7 @@
     input[type="date"] {
       padding: 10px 6px;
       font-size: 13px;
-      box-sizing: border-border;
+      box-sizing: border-box;
       min-width: 0;
     }
 
@@ -176,8 +176,13 @@
     <div class="card" style="margin-top: 10px;">
       <label>增加/充值分钟数</label>
       <input type="number" id="topupAmount" placeholder="例如：300">
+      
+      <label>充值日期</label>
+      <input type="date" id="topupDate">
+
       <label>充值备注</label>
       <input type="text" id="topupNote" placeholder="例如：充值新会员卡">
+      
       <button class="btn" onclick="addTopup()">确认充值</button>
     </div>
   </details>
@@ -245,7 +250,9 @@
         renderHistory();
       });
 
-      document.getElementById('recDate').value = new Date().toISOString().split('T')[0];
+      const todayStr = new Date().toISOString().split('T')[0];
+      document.getElementById('recDate').value = todayStr;
+      document.getElementById('topupDate').value = todayStr;
     };
 
     function toggleAdminMode() {
@@ -366,6 +373,7 @@
     function addTopup() {
       if (!isAdmin) return;
       const amount = parseInt(document.getElementById('topupAmount').value) || 0;
+      const dateStr = document.getElementById('topupDate').value;
       const note = document.getElementById('topupNote').value;
       
       if (amount <= 0) {
@@ -373,8 +381,13 @@
         return;
       }
 
-      const today = new Date();
-      const dateStr = today.toISOString().split('T')[0];
+      if (!dateStr) {
+        alert("请选择充值日期");
+        return;
+      }
+
+      const dateObj = new Date(dateStr + "T00:00:00");
+      const dayOfWeek = WEEK_DAYS[dateObj.getDay()];
       
       const log = {
         id: Date.now(),
@@ -382,7 +395,7 @@
         user: '充值',
         duration: amount,
         date: dateStr,
-        dayOfWeek: WEEK_DAYS[today.getDay()],
+        dayOfWeek: dayOfWeek,
         location: '-',
         masseuse: '-',
         note: note || '卡内充值'
@@ -395,6 +408,7 @@
       
       document.getElementById('topupAmount').value = '';
       document.getElementById('topupNote').value = '';
+      document.getElementById('topupDate').value = new Date().toISOString().split('T')[0];
       alert(`成功增加 ${amount} 分钟！`);
     }
 
@@ -523,5 +537,4 @@
   </script>
 </body>
 </html>
-
 
